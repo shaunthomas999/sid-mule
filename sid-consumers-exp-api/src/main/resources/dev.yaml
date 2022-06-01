@@ -1,0 +1,18 @@
+httpListener:
+  port: "8081"
+
+kafka:
+  server: "localhost:9092"
+  topic: "order"
+  
+productsSystemAPI:
+  host: "localhost"
+  port: "8084"
+  
+usersSystemAPI:
+  host: "localhost"
+  port: "8083"
+
+ordersSystemAPI:
+  host: "localhost"
+  port: "8085"

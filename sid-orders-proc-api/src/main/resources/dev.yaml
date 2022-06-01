@@ -1,0 +1,10 @@
+httpListener:
+  port: "8086"
+  
+usersSystemAPI:
+  host: "localhost"
+  port: "8083"
+
+ordersSystemAPI:
+  host: "localhost"
+  port: "8085"

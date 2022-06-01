@@ -1,0 +1,6 @@
+httpListener:
+  port: "8085"
+
+kafka:
+  server: "localhost:9092"
+  topic: "order"

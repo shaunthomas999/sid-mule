@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:kafka="http://www.mulesoft.org/schema/mule/kafka" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd  http://www.mulesoft.org/schema/mule/kafka http://www.mulesoft.org/schema/mule/kafka/current/mule-kafka.xsd">
+    <http:listener-config name="sid-consumers-exp-api-httpListenerConfig">
+        <http:listener-connection host="0.0.0.0" port="${httpListener.port}" />
+    </http:listener-config>
+    <apikit:config name="sid-consumers-exp-api-config" api="resource::70bb40c4-6693-4c45-81fb-dcb6ed185180:sid-consumers-exp-api:1.0.1:raml:zip:sid-consumers-exp-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <kafka:producer-config name="Apache_Kafka_Producer_configuration" doc:name="Apache Kafka Producer configuration" doc:id="14cc15b8-1147-4570-94ba-b2a29f4c032d">
+        <kafka:producer-plaintext-connection>
+            <kafka:bootstrap-servers>
+                <kafka:bootstrap-server value="${kafka.server}" />
+            </kafka:bootstrap-servers>
+        </kafka:producer-plaintext-connection>
+    </kafka:producer-config>
+    <global-property doc:name="Global Property" doc:id="792036d4-bce2-4a57-8065-2c3589351e7f" name="env" value="dev" />
+    <configuration-properties doc:name="Configuration properties" doc:id="76a41693-0cf7-40b5-8a8b-1338b13ca302" file="${env}.yaml" />
+    <http:request-config name="HTTP_Request_configuration_Products" doc:name="HTTP Request configuration" doc:id="45c94d84-6d00-4804-a7b7-9eff99c08e03">
+        <http:request-connection host="${productsSystemAPI.host}" port="${productsSystemAPI.port}" />
+    </http:request-config>
+    <http:request-config name="HTTP_Request_configuration_Users" doc:name="HTTP Request configuration" doc:id="94500aea-389e-4159-b0a4-e3fc49649be2" >
+		<http:request-connection host="${usersSystemAPI.host}" port="${usersSystemAPI.port}" />
+	</http:request-config>
+	<flow name="sid-consumers-exp-api-main">
+        <http:listener config-ref="sid-consumers-exp-api-httpListenerConfig" path="/api/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:router config-ref="sid-consumers-exp-api-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:BAD_REQUEST">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Bad request"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Method not allowed"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">405</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not acceptable"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">406</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Unsupported media type"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">415</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not Implemented"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">501</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="sid-consumers-exp-api-console">
+        <http:listener config-ref="sid-consumers-exp-api-httpListenerConfig" path="/console/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:console config-ref="sid-consumers-exp-api-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="patch:\consumers\orders:application\json:sid-consumers-exp-api-config">
+        <ee:transform>
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  orderId: 1,
+  consumerId: 1,
+  volunteerIds: [],
+  products: [
+    {
+      productId: 1,
+      requestedQuantity: 2,
+      committedToDeliverQuantity: 0,
+      deliveredQuantity: 0
+    }
+  ],
+  status: "Open"
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+    <flow name="get:\consumers\orders:sid-consumers-exp-api-config">
+        <ee:transform>
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+[
+  {
+    orderId: 1,
+    consumer: {
+      userId: 1,
+      firstName: "Shaun",
+      lastName: "Thomas",
+      dateOfBirth: "1987-11-03",
+      address: {
+        streetName: "Colorado",
+        houseNumber: "25",
+        houseNumberAddition: "",
+        postalCode: "1186HZ",
+        city: "Amstelveen",
+        country: "Netherlands"
+      },
+      "type": "Consumer",
+      email: "s@s.com",
+      password: "S**ss888",
+      phoneNumber: 123456799
+    },
+    volunteerIds: [
+      1, 
+      2
+    ],
+    products: [
+      {
+        productDetail: {
+          productId: 1,
+          name: "Paracetamol",
+          category: "Medicine"
+        },
+        requestedQuantity: 2,
+        committedToDeliverQuantity: 0,
+        deliveredQuantity: 1
+      }
+    ],
+    status: "Partially-completed"
+  }
+]]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+    <flow name="get:\consumers\products:sid-consumers-exp-api-config">
+        <http:request method="GET" doc:name="Invoke Products System API" doc:id="0339d658-deba-4ad2-bd6f-3dfc4d0df2f6" config-ref="HTTP_Request_configuration_Products" path="/api/products" />
+        <ee:transform>
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+    <flow name="post:\consumers\orders:application\json:sid-consumers-exp-api-config">
+		<kafka:publish doc:name="Publish" doc:id="a6f35a2f-40fc-42f8-8f23-a7871f524ce1" config-ref="Apache_Kafka_Producer_configuration" topic="${kafka.topic}" key="#[now()]"/>
+		<ee:transform doc:name="Transform Message" doc:id="ed1aaa66-c190-4c72-9412-2350062f9823" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": "Order successfully placed"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+    </flow>
+    <flow name="post:\consumers\users:application\json:sid-consumers-exp-api-config">
+        <http:request method="POST" doc:name="Request" doc:id="d240bccd-dd64-4022-9800-1991b34ed610" config-ref="HTTP_Request_configuration_Users" path="/api/users"/>
+		<ee:transform>
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+</mule>

@@ -1,17 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
-http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
-    <http:listener-config name="sid-products-sys-api-httpListenerConfig">
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd ">
+    <http:listener-config name="sid-volunteers-exp-api-httpListenerConfig">
         <http:listener-connection host="0.0.0.0" port="${httpListener.port}" />
     </http:listener-config>
-    <apikit:config name="sid-products-sys-api-config" api="resource::70bb40c4-6693-4c45-81fb-dcb6ed185180:sid-products-sys-api:1.0.2:raml:zip:sid-products-sys-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
-    <global-property doc:name="Global Property" doc:id="c58ccff8-14a5-46dc-a75a-69be97a6c7ba" name="env" value="dev" />
-    <configuration-properties doc:name="Configuration properties" doc:id="1af60b59-deb2-497e-a16d-8cee3483a596" file="${env}.yaml" />
-    <db:config name="Database_Config" doc:name="Database Config" doc:id="cfa2e9a6-35a9-4d0b-a619-7b826ce4bac1" >
-		<db:mssql-connection host="productsdb-server.database.windows.net" port="1433" user="productsdbadmin@productsdb-server" password="hdc5AMR!vgn.cgh.bzf" databaseName="productsdb"/>
-	</db:config>
-	<flow name="sid-products-sys-api-main">
-        <http:listener config-ref="sid-products-sys-api-httpListenerConfig" path="/api/*">
+    <apikit:config name="sid-volunteers-exp-api-config" api="resource::70bb40c4-6693-4c45-81fb-dcb6ed185180:sid-volunteers-exp-api:1.0.2:raml:zip:sid-volunteers-exp-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <global-property doc:name="Global Property" doc:id="5947d2e0-ec8f-4422-9eba-905b73c486bb" name="env" value="dev" />
+    <configuration-properties doc:name="Configuration properties" doc:id="1834911f-27cd-4681-8f7c-305af00baecb" file="${env}.yaml" />
+    <http:request-config name="HTTP_Users_Request_configuration" doc:name="HTTP Request configuration" doc:id="082663eb-6613-4c16-808d-9a284c1da336">
+        <http:request-connection host="${usersSystemAPI.host}" port="${usersSystemAPI.port}" />
+    </http:request-config>
+    <http:request-config name="HTTP_Orders_Request_configuration" doc:name="HTTP Request configuration" doc:id="717f9ebf-b365-47af-80a2-489d9af2d4dc" >
+		<http:request-connection host="${ordersSystemAPI.host}" port="${ordersSystemAPI.port}" />
+	</http:request-config>
+	<http:request-config name="HTTP_Orders_Process_Request_configuration" doc:name="HTTP Request configuration" doc:id="055c4067-1c61-447b-a74d-463b93fe3148" >
+		<http:request-connection host="${ordersProcessAPI.host}" port="${ordersProcessAPI.port}" />
+	</http:request-config>
+	<flow name="sid-volunteers-exp-api-main">
+        <http:listener config-ref="sid-volunteers-exp-api-httpListenerConfig" path="/api/*">
             <http:response statusCode="#[vars.httpStatus default 200]">
                 <http:headers>#[vars.outboundHeaders default {}]</http:headers>
             </http:response>
@@ -20,7 +25,7 @@ http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/cu
                 <http:headers>#[vars.outboundHeaders default {}]</http:headers>
             </http:error-response>
         </http:listener>
-        <apikit:router config-ref="sid-products-sys-api-config" />
+        <apikit:router config-ref="sid-volunteers-exp-api-config" />
         <error-handler>
             <on-error-propagate type="APIKIT:BAD_REQUEST">
                 <ee:transform>
@@ -102,8 +107,8 @@ output application/json
             </on-error-propagate>
         </error-handler>
     </flow>
-    <flow name="sid-products-sys-api-console">
-        <http:listener config-ref="sid-products-sys-api-httpListenerConfig" path="/console/*">
+    <flow name="sid-volunteers-exp-api-console">
+        <http:listener config-ref="sid-volunteers-exp-api-httpListenerConfig" path="/console/*">
             <http:response statusCode="#[vars.httpStatus default 200]">
                 <http:headers>#[vars.outboundHeaders default {}]</http:headers>
             </http:response>
@@ -112,7 +117,7 @@ output application/json
                 <http:headers>#[vars.outboundHeaders default {}]</http:headers>
             </http:error-response>
         </http:listener>
-        <apikit:console config-ref="sid-products-sys-api-config" />
+        <apikit:console config-ref="sid-volunteers-exp-api-config" />
         <error-handler>
             <on-error-propagate type="APIKIT:NOT_FOUND">
                 <ee:transform>
@@ -129,10 +134,25 @@ output application/json
             </on-error-propagate>
         </error-handler>
     </flow>
-    <flow name="get:\products:sid-products-sys-api-config">
-        <db:select doc:name="Select" doc:id="6436a850-bac9-4cba-9051-004c48d8730f" config-ref="Database_Config">
-			<db:sql ><![CDATA[SELECT * FROM dbo.Products]]></db:sql>
-		</db:select>
+    <flow name="patch:\volunteers\orders:application\json:sid-volunteers-exp-api-config">
+        <http:request method="PATCH" doc:name="Update Orders" doc:id="a489eb1b-bfc2-4ad8-8aac-fc70d7917c88" config-ref="HTTP_Orders_Request_configuration" path="/api/orders"/>
+		<ee:transform>
+            <ee:message>
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+    <flow name="get:\volunteers\orders:sid-volunteers-exp-api-config">
+        <http:request method="GET" doc:name="Get Orders in City" doc:id="231a508b-4f0d-4f76-9d62-43fc6f3c065b" config-ref="HTTP_Orders_Process_Request_configuration" path="/api/orders">
+			<http:query-params ><![CDATA[#[output application/java
+---
+{
+	"city" : attributes.queryParams.'city'
+}]]]></http:query-params>
+		</http:request>
 		<ee:transform>
             <ee:message>
                 <ee:set-payload><![CDATA[%dw 2.0
@@ -142,22 +162,41 @@ payload]]></ee:set-payload>
             </ee:message>
         </ee:transform>
     </flow>
-    <flow name="get:\products\(productId):sid-products-sys-api-config">
-        <ee:transform>
-            <ee:variables>
-                <ee:set-variable variableName="productId">attributes.uriParams.'productId'</ee:set-variable>
-            </ee:variables>
-        </ee:transform>
+    <flow name="post:\volunteers\users:application\json:sid-volunteers-exp-api-config">
         <ee:transform>
             <ee:message>
                 <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
 {
-  productId: 1,
-  name: "Paracetamol",
-  category: "Medicines"
+  userId: 1,
+  firstName: "Shaun",
+  lastName: "Thomas",
+  dateOfBirth: "2022-05-26",
+  address: {
+    streetName: "Colorado",
+    houseNumber: "25",
+    houseNumberAddition: "",
+    postalCode: "1186HZ",
+    city: "Amstelveen",
+    country: "Netherlands"
+  },
+  "type": "Consumer",
+  email: "s@s.com",
+  password: "S**ss888",
+  phoneNumber: 123456799
 }]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+    <flow name="get:\volunteers\users:sid-volunteers-exp-api-config">
+        <http:request method="GET" doc:name="Request" doc:id="47383ff6-9337-47d6-8e5c-7514cd821035" config-ref="HTTP_Users_Request_configuration" path="/api/users?userType=Volunteer" />
+        <ee:transform>
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
             </ee:message>
         </ee:transform>
     </flow>

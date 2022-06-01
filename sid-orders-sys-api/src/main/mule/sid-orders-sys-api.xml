@@ -1,0 +1,344 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:kafka="http://www.mulesoft.org/schema/mule/kafka" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd  http://www.mulesoft.org/schema/mule/kafka http://www.mulesoft.org/schema/mule/kafka/current/mule-kafka.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+    <http:listener-config name="sid-orders-sys-api-httpListenerConfig">
+        <http:listener-connection host="0.0.0.0" port="${httpListener.port}" />
+    </http:listener-config>
+    <apikit:config name="sid-orders-sys-api-config" api="resource::70bb40c4-6693-4c45-81fb-dcb6ed185180:sid-orders-sys-api:1.0.4:raml:zip:sid-orders-sys-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <global-property doc:name="Global Property" doc:id="f1279888-9120-4939-ab39-41407ed35a90" name="env" value="dev" />
+    <configuration-properties doc:name="Configuration properties" doc:id="711f5d18-ce56-4b6a-81ab-9bbca59329aa" file="${env}.yaml" />
+    <kafka:consumer-config name="Apache_Kafka_Consumer_configuration" doc:name="Apache Kafka Consumer configuration" doc:id="71aa5598-15cb-4f42-b703-9c83bf72bbcc">
+        <kafka:consumer-plaintext-connection>
+            <kafka:bootstrap-servers>
+                <kafka:bootstrap-server value="${kafka.server}" />
+            </kafka:bootstrap-servers>
+            <kafka:topic-patterns>
+                <kafka:topic-pattern value="${kafka.topic}" />
+            </kafka:topic-patterns>
+        </kafka:consumer-plaintext-connection>
+    </kafka:consumer-config>
+    <db:config name="Database_Config_Orders" doc:name="Database Config" doc:id="a18547b6-ff4d-4afa-826a-0e185b7c20a5" >
+		<db:mssql-connection host="ordersdb-server.database.windows.net" port="1433" user="ordersdbadmin@ordersdb-server" password="hdc5AMR!vgn.cgh.bgg" databaseName="ordersdb" />
+	</db:config>
+	<flow name="sid-orders-sys-api-main">
+        <http:listener config-ref="sid-orders-sys-api-httpListenerConfig" path="/api/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:router config-ref="sid-orders-sys-api-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:BAD_REQUEST">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Bad request"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Method not allowed"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">405</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not acceptable"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">406</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Unsupported media type"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">415</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not Implemented"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">501</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="sid-orders-sys-api-console">
+        <http:listener config-ref="sid-orders-sys-api-httpListenerConfig" path="/console/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:console config-ref="sid-orders-sys-api-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="delete:\orders\(orderId):sid-orders-sys-api-config">
+        <ee:transform>
+            <ee:variables>
+                <ee:set-variable variableName="orderId">attributes.uriParams.'orderId'</ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <ee:transform>
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  appName: "API",
+  errorCode: "400",
+  errorMessage: "x-correlation-id not present",
+  correlationId: "dd960082-abbf-47c2-8c65-f18eeb35848b",
+  timeStamp: "2019-09-30T15:27:49.274Z"
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+    <flow name="patch:\orders:application\json:sid-orders-sys-api-config">
+        <ee:transform doc:name="Transform Message" doc:id="2fa7246c-4cc1-4f23-ade2-5df1c091c066" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="origPayload" ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-variable>
+				<ee:set-variable variableName="orderId" ><![CDATA[%dw 2.0
+output application/java
+---
+payload.orderId]]></ee:set-variable>
+				<ee:set-variable variableName="products" ><![CDATA[%dw 2.0
+output application/java
+---
+payload.products map ((product, indexOfProduct) -> {
+	productId: product.productId,
+    requestedQuantity: product.requestedQuantity,
+    committedToDeliverQuantity: product.committedToDeliverQuantity,
+    deliveredQuantity: product.deliveredQuantity
+})
+]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<db:update doc:name="Update Orders" doc:id="ff5d2f1d-860e-4eaa-a271-62f093dc6d84" config-ref="Database_Config_Orders">
+			<db:sql ><![CDATA[UPDATE dbo.Orders
+SET volunteerIds = :volunteerIds, status= :status
+WHERE orderId = :orderId;]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	volunteerIds: payload.volunteerIds joinBy ",",
+    status: payload.status,
+    orderId: payload.orderId
+}]]]></db:input-parameters>
+		</db:update>
+		<foreach doc:name="For Each" doc:id="c7d5dce4-6855-4aff-b316-5709ce99b75f" collection="#[vars.products]">
+			<db:update doc:name="Update OrderProducts" doc:id="85234b84-15f1-4b39-861f-cc67174a38c9" config-ref="Database_Config_Orders">
+			<db:sql><![CDATA[UPDATE dbo.OrderProducts 
+SET requestedQuantity = :requestedQuantity,
+committedToDeliverQuantity = :committedToDeliverQuantity,
+deliveredQuantity = :deliveredQuantity
+WHERE productId = :productId AND orderId = :orderId;]]></db:sql>
+			<db:input-parameters><![CDATA[#[{
+	productId: payload.productId,
+    orderId: vars.orderId,
+    requestedQuantity: payload.requestedQuantity,
+    committedToDeliverQuantity: payload.committedToDeliverQuantity,
+    deliveredQuantity: payload.deliveredQuantity
+}]]]></db:input-parameters>
+		</db:update>
+		</foreach>
+		<ee:transform>
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+vars.origPayload]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+    <flow name="get:\orders:sid-orders-sys-api-config">
+		<set-variable value="#[attributes.queryParams.'consumerId']" doc:name="Set ConsumerId" doc:id="3f54af2e-95c8-42ec-b260-cdc7b62d0395" variableName="consumerId"/>
+		<choice doc:name="Choice" doc:id="f30821d7-557b-4c42-bf04-82932c68ee04" >
+			<when expression="#[vars.consumerId != null]">
+				<db:select doc:name="Get Orders Based on ConsumerId" doc:id="bfb29b1e-7cbc-4fc9-9baf-ae8505fdf0ac" config-ref="Database_Config_Orders">
+					<db:sql ><![CDATA[SELECT o.orderId, o.consumerId, o.volunteerIds, o.status, op.productId, op.requestedQuantity, op.committedToDeliverQuantity, op.deliveredQuantity
+FROM dbo.Orders AS o
+INNER JOIN dbo.OrderProducts AS op ON o.orderId=op.orderId
+WHERE o.consumerId = :consumerId;]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	consumerId: vars.consumerId as Number
+}]]]></db:input-parameters>
+				</db:select>
+			</when>
+			<otherwise >
+				<db:select doc:name="Get all Orders" doc:id="8ac75342-2a65-4263-977d-9dae268b59cb" config-ref="Database_Config_Orders">
+					<db:sql ><![CDATA[SELECT o.orderId, o.consumerId, o.volunteerIds, o.status, op.productId, op.requestedQuantity, op.committedToDeliverQuantity, op.deliveredQuantity
+FROM dbo.Orders AS o
+INNER JOIN dbo.OrderProducts AS op ON o.orderId=op.orderId;]]></db:sql>
+				</db:select>
+			</otherwise>
+		</choice>
+		<ee:transform doc:name="Transform Message" doc:id="bf49a201-29d8-42f4-97ac-b76e45e24de2" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[var products=payload map ((product, indexOfProducts) -> {
+	productId: product.productId,
+	requestedQuantity: product.requestedQuantity,
+	committedToDeliverQuantity: product.committedToDeliverQuantity,
+	deliveredQuantity: product.deliveredQuantity
+})
+var volunteerIds=(payload.volunteerIds distinctBy $) joinBy ","
+var orderId=payload.orderId distinctBy $ joinBy ""
+output application/json
+---
+if (orderId != null)({
+	orderId: (payload.orderId distinctBy $ joinBy "") as Number,
+	consumerId: (payload.consumerId distinctBy $ joinBy "") as Number,
+	volunteerIds: if (volunteerIds != "") (flatten (volunteerIds splitBy "," map () -> [$ as Number])) else [],
+	products: products,
+	status: payload.status distinctBy $ joinBy ""
+})else {}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+    </flow>
+    <flow name="post:\orders:application\json:sid-orders-sys-api-config">
+        <ee:transform>
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  orderId: 1,
+  consumerId: 1,
+  volunteerIds: [],
+  products: [
+    {
+      productId: 1,
+      requestedQuantity: 2,
+      committedToDeliverQuantity: 0,
+      deliveredQuantity: 0
+    }
+  ],
+  status: "Open"
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+    <flow name="consume-orders" doc:id="6ce47862-a21c-4164-b234-3f640bdc1574">
+        <kafka:message-listener doc:name="Order Message listener" doc:id="06d9fc95-346d-4934-9c91-838184e6f335" config-ref="Apache_Kafka_Consumer_configuration" ackMode="AUTO"/>
+		<ee:transform doc:name="Transform Message" doc:id="685c6463-bcd8-4dbc-b9be-96e9044efcbb" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+read(payload,'application/json')]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="Transform Message" doc:id="a5ea33f5-a527-44b7-89f5-cb7b8648f549" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="products" ><![CDATA[%dw 2.0
+output application/java
+---
+payload.products map ((product, indexOfProduct) -> {
+	productId: product.productId,
+	requestedQuantity: product.requestedQuantity,
+	committedToDeliverQuantity: product.committedToDeliverQuantity,
+	deliveredQuantity: product.deliveredQuantity
+})]]></ee:set-variable>
+				<ee:set-variable variableName="orderId" ><![CDATA[payload.orderId]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<db:insert doc:name="Insert" doc:id="3372994e-07fc-490e-bea2-305126fb39f8" config-ref="Database_Config_Orders" target="orderInsertResult">
+			<db:sql ><![CDATA[INSERT INTO dbo.Orders 
+(orderId, consumerId, volunteerIds, status)
+VALUES 
+(:orderId, :consumerId, :volunteerIds, :status);]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	orderId: payload.orderId,
+    consumerId: payload.consumerId,
+    volunteerIds: payload.volunteerIds joinBy ",",
+    status: payload.status
+}]]]></db:input-parameters>
+		</db:insert>
+		<foreach doc:name="For Each" doc:id="4dd50f62-d5d6-4623-9414-4b68da9101f4" collection="#[vars.products]">
+			<db:insert doc:name="Insert" doc:id="95d5dbd3-1692-4e52-968d-932c35f7e65b" config-ref="Database_Config_Orders">
+			<db:sql><![CDATA[INSERT INTO dbo.OrderProducts 
+(orderId, productId, requestedQuantity, committedToDeliverQuantity, deliveredQuantity)
+VALUES 
+(:orderId, :productId, :requestedQuantity, :committedToDeliverQuantity, :deliveredQuantity);]]></db:sql>
+			<db:input-parameters><![CDATA[#[{
+	orderId: vars.orderId,
+    productId: payload.productId,
+    requestedQuantity: payload.requestedQuantity,
+    committedToDeliverQuantity: payload.committedToDeliverQuantity,
+    deliveredQuantity: payload.deliveredQuantity,
+}]]]></db:input-parameters>
+		</db:insert>
+		</foreach>
+    </flow>
+</mule>

@@ -1,17 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
-http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
-    <http:listener-config name="sid-products-sys-api-httpListenerConfig">
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd ">
+    <http:listener-config name="sid-orders-proc-api-httpListenerConfig">
         <http:listener-connection host="0.0.0.0" port="${httpListener.port}" />
     </http:listener-config>
-    <apikit:config name="sid-products-sys-api-config" api="resource::70bb40c4-6693-4c45-81fb-dcb6ed185180:sid-products-sys-api:1.0.2:raml:zip:sid-products-sys-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
-    <global-property doc:name="Global Property" doc:id="c58ccff8-14a5-46dc-a75a-69be97a6c7ba" name="env" value="dev" />
-    <configuration-properties doc:name="Configuration properties" doc:id="1af60b59-deb2-497e-a16d-8cee3483a596" file="${env}.yaml" />
-    <db:config name="Database_Config" doc:name="Database Config" doc:id="cfa2e9a6-35a9-4d0b-a619-7b826ce4bac1" >
-		<db:mssql-connection host="productsdb-server.database.windows.net" port="1433" user="productsdbadmin@productsdb-server" password="hdc5AMR!vgn.cgh.bzf" databaseName="productsdb"/>
-	</db:config>
-	<flow name="sid-products-sys-api-main">
-        <http:listener config-ref="sid-products-sys-api-httpListenerConfig" path="/api/*">
+    <apikit:config name="sid-orders-proc-api-config" api="resource::70bb40c4-6693-4c45-81fb-dcb6ed185180:sid-orders-proc-api:1.0.3:raml:zip:sid-orders-proc-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <global-property doc:name="Global Property" doc:id="ecefd6e5-c787-4671-8e48-06c88c4b6b2c" name="env" value="dev" />
+    <configuration-properties doc:name="Configuration properties" doc:id="daffb600-0262-4c6d-8292-62c83f24e723" file="${env}.yaml" />
+    <http:request-config name="HTTP_Request_configuration_Users" doc:name="HTTP Request configuration" doc:id="a9a387b9-8164-43b6-a167-6483b0713ffe" >
+		<http:request-connection host="${usersSystemAPI.host}" port="${usersSystemAPI.port}" />
+	</http:request-config>
+	<http:request-config name="HTTP_Request_configuration_Orders_Sys" doc:name="HTTP Request configuration" doc:id="0565b8ef-b767-4739-9808-3eff7619b530" >
+		<http:request-connection host="${ordersSystemAPI.host}" port="${ordersSystemAPI.port}" />
+	</http:request-config>
+	<flow name="sid-orders-proc-api-main">
+        <http:listener config-ref="sid-orders-proc-api-httpListenerConfig" path="/api/*">
             <http:response statusCode="#[vars.httpStatus default 200]">
                 <http:headers>#[vars.outboundHeaders default {}]</http:headers>
             </http:response>
@@ -20,7 +22,7 @@ http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/cu
                 <http:headers>#[vars.outboundHeaders default {}]</http:headers>
             </http:error-response>
         </http:listener>
-        <apikit:router config-ref="sid-products-sys-api-config" />
+        <apikit:router config-ref="sid-orders-proc-api-config" />
         <error-handler>
             <on-error-propagate type="APIKIT:BAD_REQUEST">
                 <ee:transform>
@@ -102,8 +104,8 @@ output application/json
             </on-error-propagate>
         </error-handler>
     </flow>
-    <flow name="sid-products-sys-api-console">
-        <http:listener config-ref="sid-products-sys-api-httpListenerConfig" path="/console/*">
+    <flow name="sid-orders-proc-api-console">
+        <http:listener config-ref="sid-orders-proc-api-httpListenerConfig" path="/console/*">
             <http:response statusCode="#[vars.httpStatus default 200]">
                 <http:headers>#[vars.outboundHeaders default {}]</http:headers>
             </http:response>
@@ -112,7 +114,7 @@ output application/json
                 <http:headers>#[vars.outboundHeaders default {}]</http:headers>
             </http:error-response>
         </http:listener>
-        <apikit:console config-ref="sid-products-sys-api-config" />
+        <apikit:console config-ref="sid-orders-proc-api-config" />
         <error-handler>
             <on-error-propagate type="APIKIT:NOT_FOUND">
                 <ee:transform>
@@ -129,23 +131,10 @@ output application/json
             </on-error-propagate>
         </error-handler>
     </flow>
-    <flow name="get:\products:sid-products-sys-api-config">
-        <db:select doc:name="Select" doc:id="6436a850-bac9-4cba-9051-004c48d8730f" config-ref="Database_Config">
-			<db:sql ><![CDATA[SELECT * FROM dbo.Products]]></db:sql>
-		</db:select>
-		<ee:transform>
-            <ee:message>
-                <ee:set-payload><![CDATA[%dw 2.0
-output application/json
----
-payload]]></ee:set-payload>
-            </ee:message>
-        </ee:transform>
-    </flow>
-    <flow name="get:\products\(productId):sid-products-sys-api-config">
+    <flow name="delete:\orders\(orderId):sid-orders-proc-api-config">
         <ee:transform>
             <ee:variables>
-                <ee:set-variable variableName="productId">attributes.uriParams.'productId'</ee:set-variable>
+                <ee:set-variable variableName="orderId">attributes.uriParams.'orderId'</ee:set-variable>
             </ee:variables>
         </ee:transform>
         <ee:transform>
@@ -154,9 +143,95 @@ payload]]></ee:set-payload>
 output application/json
 ---
 {
-  productId: 1,
-  name: "Paracetamol",
-  category: "Medicines"
+  appName: "API",
+  errorCode: "400",
+  errorMessage: "x-correlation-id not present",
+  correlationId: "dd960082-abbf-47c2-8c65-f18eeb35848b",
+  timeStamp: "2019-09-30T15:27:49.274Z"
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+    <flow name="patch:\orders:application\json:sid-orders-proc-api-config">
+        <ee:transform>
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  orderId: 1,
+  consumerId: 1,
+  volunteerIds: [],
+  products: [
+    {
+      productId: 1,
+      requestedQuantity: 2,
+      committedToDeliverQuantity: 0,
+      deliveredQuantity: 0
+    }
+  ],
+  status: "Open"
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+    <flow name="get:\orders:sid-orders-proc-api-config">
+        <http:request method="GET" doc:name="Get Users in City" doc:id="05a2728a-8c5a-4fcc-ac23-bff629522491" config-ref="HTTP_Request_configuration_Users" path="/api/users">
+			<http:query-params ><![CDATA[#[output application/java
+---
+{
+	"city" : attributes.queryParams.'city',
+	"userType" : "Consumer"
+}]]]></http:query-params>
+		</http:request>
+		<set-variable value="#[[]]" doc:name="Set Variable" doc:id="87a0583b-bb1c-41d6-b4cb-56167448b400" variableName="orderOutput"/>
+		<foreach doc:name="For Each" doc:id="a0c20306-2991-4b5b-9c0a-5eb34e25b7b3" collection="#[payload]">
+			<http:request method="GET" doc:name="Get Orders for CustomerIds" doc:id="9b21ec8c-7641-455c-857c-0f81d743ff8b" config-ref="HTTP_Request_configuration_Orders_Sys" path="/api/orders" >
+				<http:query-params ><![CDATA[#[output application/java
+---
+{
+	"consumerId" : payload.userId
+}]]]></http:query-params>
+			</http:request>
+			<ee:transform doc:name="Transform Message" doc:id="3cf6a4f7-3b1c-4f0a-a4e3-9832feac2ea6" >
+				<ee:message >
+				</ee:message>
+				<ee:variables >
+					<ee:set-variable variableName="orderOutput" ><![CDATA[%dw 2.0
+output application/java
+---
+vars.orderOutput << payload]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+		</foreach>
+		<ee:transform doc:name="Transform Message" doc:id="a7f9c992-dd5c-4e94-b28f-95d9ad374434" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+vars.orderOutput]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+    </flow>
+    <flow name="post:\orders:application\json:sid-orders-proc-api-config">
+        <ee:transform>
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  orderId: 1,
+  consumerId: 1,
+  volunteerIds: [],
+  products: [
+    {
+      productId: 1,
+      requestedQuantity: 2,
+      committedToDeliverQuantity: 0,
+      deliveredQuantity: 0
+    }
+  ],
+  status: "Open"
 }]]></ee:set-payload>
             </ee:message>
         </ee:transform>

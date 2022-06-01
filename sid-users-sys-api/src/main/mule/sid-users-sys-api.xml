@@ -1,9 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd ">
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd  http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
     <http:listener-config name="sid-users-sys-api-httpListenerConfig">
-        <http:listener-connection host="0.0.0.0" port="8081" />
+        <http:listener-connection host="0.0.0.0" port="${httpListener.port}" />
     </http:listener-config>
-    <apikit:config name="sid-users-sys-api-config" api="resource::70bb40c4-6693-4c45-81fb-dcb6ed185180:sid-users-sys-api:1.0.1:raml:zip:sid-users-sys-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <apikit:config name="sid-users-sys-api-config" api="resource::70bb40c4-6693-4c45-81fb-dcb6ed185180:sid-users-sys-api:1.0.3:raml:zip:sid-users-sys-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <db:config name="Database_Config_Users" doc:name="Database Config" doc:id="1160bd72-7ce1-48b3-98d6-b5154fa7709c">
+        <db:mssql-connection host="usersdb-server.database.windows.net" port="1433" user="usersdb-admin@usersdb-server" password="hdc5AMR!vgn.cgh.bze" databaseName="usersdb" />
+    </db:config>
+    <global-property doc:name="Global Property" doc:id="e3407638-9fdc-4c4f-a195-81d062e79455" name="env" value="dev" />
+    <configuration-properties doc:name="Configuration properties" doc:id="80b0308a-2e39-4bb5-989d-31c8972ac06c" file="${env}.yaml" />
     <flow name="sid-users-sys-api-main">
         <http:listener config-ref="sid-users-sys-api-httpListenerConfig" path="/api/*">
             <http:response statusCode="#[vars.httpStatus default 200]">
@@ -144,54 +149,142 @@ output application/json
                 <ee:set-variable variableName="userId">attributes.uriParams.'userId'</ee:set-variable>
             </ee:variables>
         </ee:transform>
+        <db:select doc:name="Select" doc:id="72bb5607-9c4d-4ac0-8348-bc645376252a" config-ref="Database_Config_Users">
+            <db:sql><![CDATA[SELECT * FROM dbo.Users WHERE userId = :userId]]></db:sql>
+            <db:input-parameters><![CDATA[#[{
+	userId: vars.userId
+}]]]></db:input-parameters>
+        </db:select>
         <ee:transform>
             <ee:message>
                 <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
 {
-  firstName: "Shaun",
-  lastName: "Thomas",
-  dateOfBirth: "2022-05-26",
-  address: {
-    streetName: "Colorado",
-    houseNumber: "25",
-    houseNumberAddition: "",
-    postalCode: "1186HZ",
-    city: "Amstelveen",
-    country: "Netherlands"
-  },
-  "type": "Consumer",
-  email: "s@s.com",
-  password: "S**ss888",
-  phoneNumber: 123456799
+	userId: payload.userId,
+	firstName: payload.firstName default "",
+	lastName: payload.lastName default "",
+	address: {
+		country: payload.country default "",
+		streetName: payload.streetName default "",
+		city: payload.city default "",
+		postalCode: payload.postalCode default "",
+		houseNumber: payload.houseNumber default "",
+		houseNumberAddition: payload.houseNumberAddition
+	},
+	phoneNumber: payload.phoneNumber as Number default 0,
+	dateOfBirth: payload.dateOfBirth default "",
+	"type": payload.userType default "",
+	email: payload.email default ""
 }]]></ee:set-payload>
             </ee:message>
         </ee:transform>
     </flow>
     <flow name="post:\users:application\json:sid-users-sys-api-config">
-        <ee:transform>
+        <db:query-single doc:name="Query single" doc:id="38c21efe-f8d4-4f9a-86ab-8e6813dbc8b3" config-ref="Database_Config_Users" target="maxUserId">
+			<db:sql ><![CDATA[SELECT MAX(userId) AS maxUserId FROM dbo.Users]]></db:sql>
+		</db:query-single>
+		<ee:transform>
+            <ee:message>
+            </ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="userId" ><![CDATA[vars.maxUserId.maxUserId as Number + 1
+	
+]]></ee:set-variable>
+			</ee:variables>
+        </ee:transform>
+		<db:insert doc:name="Insert" doc:id="91acce13-e399-4d6e-8d1d-d1537b12570a" config-ref="Database_Config_Users" target="insertResult">
+			<db:sql ><![CDATA[INSERT INTO Users 
+(userId, firstName, lastName, dateOfBirth, streetName, houseNumber, houseNumberAddition, postalCode, city, country, userType, email, phoneNumber)
+VALUES 
+(:userId, :firstName, :lastName, :dateOfBirth, :streetName, :houseNumber, :houseNumberAddition, :postalCode, :city, :country, :userType, :email, :phoneNumber);]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	userId: vars.userId,
+    firstName: payload.firstName,
+    lastName: payload.lastName,
+    dateOfBirth: payload.dateOfBirth,
+    streetName: payload.address.streetName,
+    houseNumber: payload.address.houseNumber,
+    houseNumberAddition: payload.address.houseNumberAddition,
+    postalCode: payload.address.postalCode,
+    city: payload.address.city,
+    country: payload.address.country,
+    userType: payload.'type',
+    email: payload.email,
+    phoneNumber: payload.phoneNumber
+}]]]></db:input-parameters>
+		</db:insert>
+		<ee:transform doc:name="Transform Message" doc:id="8a21f82b-6f33-4b47-9a71-e68ed80b6ef0" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	firstName: payload.firstName,
+	lastName: payload.lastName,
+	address: payload.address,
+	phoneNumber: payload.phoneNumber,
+	dateOfBirth: payload.dateOfBirth,
+	"type": payload."type",
+	userId: vars.userId,
+	email: payload.email
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+    </flow>
+    <flow name="get:\users:sid-users-sys-api-config">
+        <ee:transform doc:name="Transform Message" doc:id="ffdbf7a2-ea3b-455d-9ea1-b7ef028efa7e">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="userType"><![CDATA[attributes.queryParams.'userType']]></ee:set-variable>
+                <ee:set-variable variableName="city"><![CDATA[attributes.queryParams.'city']]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <choice doc:name="Choice" doc:id="65f462a6-c7b9-4cec-bd04-151ea42e83b5">
+            <when expression="#[vars.city != null and vars.userType != null]">
+                <db:select doc:name="Get Users Based on City" doc:id="c700ce5a-af16-4839-95b5-fb9fd521b175" config-ref="Database_Config_Users">
+                    <db:sql><![CDATA[SELECT * FROM dbo.Users WHERE city = :city AND userType = :userType]]></db:sql>
+                    <db:input-parameters><![CDATA[#[{
+	city: vars.city,
+	userType: vars.userType
+}]]]></db:input-parameters>
+                </db:select>
+            </when>
+            <when expression="#[vars.userType != null]">
+                <db:select doc:name="Get Users Based on userType" doc:id="1ee8cfb0-857d-40f7-a9c5-229900d0b5d0" config-ref="Database_Config_Users">
+                    <db:sql><![CDATA[SELECT * FROM dbo.Users WHERE userType = :userType]]></db:sql>
+                    <db:input-parameters><![CDATA[#[{
+	userType: vars.userType
+}]]]></db:input-parameters>
+                </db:select>
+            </when>
+            <otherwise>
+                <db:select doc:name="Get All Users" doc:id="ee0582a4-efd5-4a1a-849e-554fab605f4a" config-ref="Database_Config_Users">
+                    <db:sql><![CDATA[SELECT * FROM dbo.Users]]></db:sql>
+                </db:select>
+            </otherwise>
+        </choice>
+        <ee:transform doc:name="Transform Message" doc:id="afd3bf2a-f3e9-4f0b-a96f-ac754e97b6cb">
             <ee:message>
                 <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
-{
-  userId: 1,
-  firstName: "Shaun",
-  lastName: "Thomas",
-  dateOfBirth: "2022-05-26",
-  address: {
-    streetName: "Colorado",
-    houseNumber: "25",
-    houseNumberAddition: "",
-    postalCode: "1186HZ",
-    city: "Amstelveen",
-    country: "Netherlands"
-  },
-  "type": "Consumer",
-  email: "s@s.com",
-  password: "S**ss888",
-  phoneNumber: 123456799
+payload map ( payload01 , indexOfPayload01 ) -> {
+	firstName: payload01.firstName default "",
+	lastName: payload01.lastName default "",
+	address: {
+		country: payload01.country default "",
+		streetName: payload01.streetName default "",
+		city: payload01.city default "",
+		postalCode: payload01.postalCode default "",
+		houseNumber: payload01.houseNumber default "",
+		houseNumberAddition: payload01.houseNumberAddition
+	},
+	phoneNumber: payload01.phoneNumber as Number default 0,
+	dateOfBirth: payload01.dateOfBirth default "",
+	"type": payload01.userType default "",
+	userId: payload01.userId,
+	email: (payload01.email default "")
 }]]></ee:set-payload>
             </ee:message>
         </ee:transform>

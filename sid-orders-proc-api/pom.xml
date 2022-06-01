@@ -3,11 +3,11 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>com.mycompany</groupId>
-	<artifactId>sid-users-sys-api</artifactId>
+	<artifactId>sid-orders-proc-api</artifactId>
 	<version>1.0.0-SNAPSHOT</version>
 	<packaging>mule-application</packaging>
 
-	<name>sid-users-sys-api</name>
+	<name>sid-orders-proc-api</name>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -29,14 +29,6 @@
 				<artifactId>mule-maven-plugin</artifactId>
 				<version>${mule.maven.plugin.version}</version>
 				<extensions>true</extensions>
-				<configuration>
-					<sharedLibraries>
-						<sharedLibrary>
-							<groupId>com.microsoft.sqlserver</groupId>
-							<artifactId>mssql-jdbc</artifactId>
-						</sharedLibrary>
-					</sharedLibraries>
-				</configuration>
 			</plugin>
 		</plugins>
 	</build>
@@ -61,19 +53,8 @@
 			<classifier>mule-plugin</classifier>
 		</dependency>
 		<dependency>
-			<groupId>org.mule.connectors</groupId>
-			<artifactId>mule-db-connector</artifactId>
-			<version>1.12.1</version>
-			<classifier>mule-plugin</classifier>
-		</dependency>
-		<dependency>
-			<groupId>com.microsoft.sqlserver</groupId>
-			<artifactId>mssql-jdbc</artifactId>
-			<version>6.2.2.jre8</version>
-		</dependency>
-		<dependency>
 			<groupId>70bb40c4-6693-4c45-81fb-dcb6ed185180</groupId>
-			<artifactId>sid-users-sys-api</artifactId>
+			<artifactId>sid-orders-proc-api</artifactId>
 			<version>1.0.3</version>
 			<classifier>raml</classifier>
 			<type>zip</type>
